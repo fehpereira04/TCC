@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agendamento - SUS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .step-content { display: none; }
+        .step-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl overflow-hidden min-h-[580px] flex flex-col justify-between p-8">
+        
+        <div id="step-login" class="step-content active max-w-md mx-auto w-full text-center my-auto">
+            <div class="flex justify-center mb-6">
+                <div class="flex items-center space-x-2 text-blue-600 font-bold text-4xl">
+                    <span>💙</span> <span class="tracking-wider">sus</span>
+                </div>
+            </div>
+            
+            <div class="space-y-4 text-left" onkeydown="if(event.key === 'Enter') autenticarUsuario()">
+                <div>
+                    <label class="block text-gray-500 text-sm mb-1">CPF (Apenas números)</label>
+                    <input type="text" id="login-cpf" oninput="verificarFluxoCPF()" placeholder="Ex: 12345678901" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div id="contexto-msg" class="text-xs text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg text-center hidden"></div>
+
+                <div id="campos-cadastro" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-gray-500 text-sm mb-1">Nome Completo</label>
+                        <input type="text" id="login-nome" placeholder="Seu nome" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-sm mb-1">Data de Nascimento</label>
+                        <input type="date" id="login-nasc" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div id="campo-senha" class="hidden">
+                    <label id="label-senha" class="block text-gray-500 text-sm mb-1">Defina sua Senha</label>
+                    <input type="password" id="login-senha" placeholder="Digite a senha" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <button onclick="autenticarUsuario()" class="w-full bg-[#0056b3] text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition shadow cursor-pointer">Acessar Sistema</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-6 text-center">Pressione <strong>Enter</strong> para entrar após preencher os campos.</p>
+        </div>
+
+        <div id="step-panel" class="step-content w-full">
+            <div class="flex justify-between items-center border-b pb-4 mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Painel do Paciente</h1>
+                <div class="text-right">
+                    <span class="text-sm text-gray-600 block">Bem-vindo, <strong id="painel-nome-usuario">...</strong></span>
+                    <button onclick="logout()" class="text-xs text-blue-600 underline hover:text-blue-800 cursor-pointer font-medium mr-3">Sair da conta</button>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 text-center my-6">
+                <h2 class="text-xl font-bold text-blue-900 mb-1">Agendar Nova Consulta</h2>
+                <p class="text-gray-600 mb-4 text-xs">Selecione uma especialidade disponível, local e horário.</p>
+                <button onclick="nextStep('sched1')" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-blue-700 transition shadow cursor-pointer">Agendar Agora</button>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Minhas Consultas (Agendadas / Histórico)</h3>
+                <div id="lista-consultas" class="space-y-3"></div>
+            </div>
+
+            <div class="mt-12 pt-4 border-t border-red-100 flex justify-between items-center bg-red-50/50 -mx-8 -mb-8 p-6 rounded-b-3xl">
+                <div>
+                    <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider">Zona de Privacidade</h4>
+                    <p class="text-xs text-gray-500">Excluir permanentemente seus dados de cadastro deste navegador.</p>
+                </div>
+                <button onclick="deletarConta()" class="text-xs bg-white text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-600 hover:text-white transition font-medium cursor-pointer shadow-xs">
+                    Deletar minha conta
+                </button>
+            </div>
+        </div>
+
+        <div id="step-sched1" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('panel')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Voltar ao Painel</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 1 de 4</span>
+                <div class="w-24"></div> </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione a Especialidade</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="selectEspecialidade('Cardiologia', 'Dr(a). Maria Santos')" class="border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 p-6 rounded-2xl text-center transition flex flex-col items-center justify-center space-y-2 cursor-pointer">
+                    <span class="text-3xl">❤️</span>
+                    <span class="font-bold text-gray-800">Cardiologia</span>
+                    <span class="text-xs text-gray-500">Médico(a): Dr(a). Maria Santos</span>
+                </button>
+                <button onclick="selectEspecialidade('Clínico Geral', 'Dr(a). Carlos Roberto')" class="border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 p-6 rounded-2xl text-center transition flex flex-col items-center justify-center space-y-2 cursor-pointer">
+                    <span class="text-3xl">🩺</span>
+                    <span class="font-bold text-gray-800">Clínico Geral</span>
+                    <span class="text-xs text-gray-500">Médico(a): Dr(a). Carlos Roberto</span>
+                </button>
+                <button onclick="selectEspecialidade('Ortopedia', 'Dr(a). Amanda Souza')" class="border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 p-6 rounded-2xl text-center transition flex flex-col items-center justify-center space-y-2 cursor-pointer">
+                    <span class="text-3xl">🦴</span>
+                    <span class="font-bold text-gray-800">Ortopedia</span>
+                    <span class="text-xs text-gray-500">Médico(a): Dr(a). Amanda Souza</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="step-sched2" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('sched1')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Mudar Especialidade</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 2 de 4</span>
+                <div class="w-32"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione a Unidade de Saúde</h2>
+            
+            <div class="space-y-3">
+                <div onclick="selectUBS('UBS Centro - Rua das Flores, 1123')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition">
+                    <div>
+                        <h4 class="font-bold text-gray-800">UBS Centro</h4>
+                        <p class="text-xs text-gray-500">Rua das Flores, 1123 - Jardim das Flores</p>
+                    </div>
+                    <span class="text-sm font-semibold text-blue-600">2.3 km</span>
+                </div>
+                <div onclick="selectUBS('UBS Vila Nova - Av. Principal, 450')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition">
+                    <div>
+                        <h4 class="font-bold text-gray-800">UBS Vila Nova</h4>
+                        <p class="text-xs text-gray-500">Av. Principal, 450</p>
+                    </div>
+                    <span class="text-sm font-semibold text-blue-600">3.0 km</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-sched3" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('sched2')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Mudar Unidade (UBS)</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 3 de 4</span>
+                <div class="w-32"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione Data e Horário</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Escolha o Dia:</label>
+                    <input type="date" id="input-date" onchange="atualizarHorariosDisponiveis()" class="w-full border p-3 rounded-xl outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Horários Disponíveis:</label>
+                    <div id="grade-horarios" class="grid grid-cols-2 gap-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-sched4" class="step-content w-full" onkeydown="if(event.key === 'Enter') salvarAgendamento()">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('sched3')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Mudar Data/Hora</span>
+                </button>
+                <span class="text-xs text-green-600 font-bold uppercase tracking-widest">Passo 4 de 4</span>
+                <div class="w-32"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Confirme seu Agendamento</h2>
+            
+            <div class="bg-gray-50 border rounded-2xl p-6 space-y-3 text-sm text-gray-700">
+                <p><strong>Paciente:</strong> <span id="conf-paciente"></span></p>
+                <p><strong>CPF:</strong> <span id="conf-cpf"></span></p>
+                <hr class="border-gray-200">
+                <p><strong>Especialidade:</strong> <span id="conf-especialidade"></span></p>
+                <p><strong>Médico(a):</strong> <span id="conf-medico"></span></p>
+                <p><strong>Local:</strong> <span id="conf-ubs"></span></p>
+                <p><strong>Data/Hora:</strong> <span id="conf-data-hora"></span></p>
+            </div>
+
+            <p class="text-xs text-gray-400 mt-4 text-center">Pressione <strong>Enter</strong> para confirmar o agendamento.</p>
+
+            <div class="flex space-x-4 mt-6">
+                <button onclick="nextStep('panel')" class="w-1/2 bg-gray-200 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-300 transition cursor-pointer">Cancelar e Voltar</button>
+                <button id="btn-confirmar-final" onclick="salvarAgendamento()" class="w-1/2 bg-green-600 text-white font-medium py-3 rounded-xl hover:bg-green-700 transition shadow cursor-pointer">Confirmar Agendamento</button>
+            </div>
+        </div>
+
+        <div id="step-success" class="step-content w-full text-center py-8" onkeydown="if(event.key === 'Enter') nextStep('panel')">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✓</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Agendamento Confirmado!</h2>
+            <p class="text-sm text-gray-500">Sua consulta foi guardada no sistema.</p>
+            <p class="text-xs text-gray-400 mt-2">Pressione <strong>Enter</strong> para ir ao painel.</p>
+            <button id="btn-sucesso-voltar" onclick="nextStep('panel')" class="mt-6 bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer">Ir para o Meu Painel</button>
+        </div>
+
+    </div>
+
+    <script>
+        let bancoUsuarios = JSON.parse(localStorage.getItem('sus_usuarios')) || {};
+        let bancoAgendamentos = JSON.parse(localStorage.getItem('sus_agendamentos')) || [];
+        
+        let usuarioSessao = null; 
+        let rascunhoAgendamento = {};
+
+        document.getElementById('input-date').value = "2026-06-25";
+
+        function nextStep(stepId) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+            const targetStep = document.getElementById('step-' + stepId);
+            targetStep.classList.add('active');
+            
+            if(stepId === 'panel') carregarPainelUsuario();
+
+            // Gerenciamento de foco inteligente para o "Enter" funcionar perfeitamente
+            if(stepId === 'sched4') {
+                document.getElementById('btn-confirmar-final').focus();
+            } else if(stepId === 'success') {
+                document.getElementById('btn-sucesso-voltar').focus();
+            }
+        }
+
+        function verificarFluxoCPF() {
+            const cpf = document.getElementById('login-cpf').value.trim();
+            const divCadastro = document.getElementById('campos-cadastro');
+            const divSenha = document.getElementById('campo-senha');
+            const labelSenha = document.getElementById('label-senha');
+            const msgContexto = document.getElementById('contexto-msg');
+
+            if(cpf.length < 3) {
+                divCadastro.classList.add('hidden');
+                divSenha.classList.add('hidden');
+                msgContexto.classList.add('hidden');
+                return;
+            }
+
+            divSenha.classList.remove('hidden');
+            msgContexto.classList.remove('hidden');
+
+            if (bancoUsuarios[cpf]) {
+                divCadastro.classList.add('hidden');
+                labelSenha.innerText = "Digite sua Senha de Acesso";
+                msgContexto.innerText = `Usuário cadastrado encontrado! Informe sua senha.`;
+                msgContexto.className = "text-xs text-green-700 font-medium bg-green-50 p-2.5 rounded-lg text-center";
+            } else {
+                divCadastro.classList.remove('hidden');
+                labelSenha.innerText = "Crie uma Senha para sua Conta";
+                msgContexto.innerText = `CPF Novo detectado. Complete os campos para se cadastrar.`;
+                msgContexto.className = "text-xs text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg text-center";
+            }
+        }
+
+        function autenticarUsuario() {
+            const cpf = document.getElementById('login-cpf').value.trim();
+            const senha = document.getElementById('login-senha').value;
+
+            if(!cpf || !senha) {
+                alert("Por favor, preencha o CPF e a Senha.");
+                return;
+            }
+
+            if (!bancoUsuarios[cpf]) {
+                const nome = document.getElementById('login-nome').value.trim();
+                const nascimento = document.getElementById('login-nasc').value;
+
+                if(!nome || !nascimento) {
+                    alert("Para realizar o novo cadastro, preencha o Nome e Data de Nascimento.");
+                    return;
+                }
+
+                bancoUsuarios[cpf] = { nome: nome, nascimento: nascimento, senha: senha };
+                localStorage.setItem('sus_usuarios', JSON.stringify(bancoUsuarios));
+                alert(`Cadastro criado com sucesso!`);
+            } else {
+                if (bancoUsuarios[cpf].senha !== senha) {
+                    alert("❌ Senha incorreta! Por favor, tente novamente.");
+                    document.getElementById('login-senha').value = '';
+                    document.getElementById('login-senha').focus();
+                    return;
+                }
+            }
+
+            usuarioSessao = { cpf: cpf, nome: bancoUsuarios[cpf].nome };
+            nextStep('panel');
+        }
+
+        function logout() {
+            usuarioSessao = null;
+            document.getElementById('login-cpf').value = '';
+            document.getElementById('login-nome').value = '';
+            document.getElementById('login-nasc').value = '';
+            document.getElementById('login-senha').value = '';
+            verificarFluxoCPF();
+            nextStep('login');
+        }
+
+        function deletarConta() {
+            const confirmacao = confirm("ATENÇÃO:\nTem certeza que deseja deletar sua conta? Isso apagará seu cadastro e cancelará suas consultas.");
+            if (confirmacao) {
+                const cpfParaDeletar = usuarioSessao.cpf;
+                delete bancoUsuarios[cpfParaDeletar];
+                localStorage.setItem('sus_usuarios', JSON.stringify(bancoUsuarios));
+
+                bancoAgendamentos = bancoAgendamentos.filter(a => a.pacienteCpf !== cpfParaDeletar);
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+
+                alert("Sua conta foi permanentemente removida.");
+                logout();
+            }
+        }
+
+        function carregarPainelUsuario() {
+            document.getElementById('painel-nome-usuario').innerText = usuarioSessao.nome;
+            renderizarListaConsultas();
+        }
+
+        function renderizarListaConsultas() {
+            const container = document.getElementById('lista-consultas');
+            container.innerHTML = '';
+
+            const minhasConsultas = bancoAgendamentos.filter(a => a.pacienteCpf === usuarioSessao.cpf);
+
+            if (minhasConsultas.length === 0) {
+                container.innerHTML = `<div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-500 text-center">Nenhuma consulta agendada no momento.</div>`;
+                return;
+            }
+
+            minhasConsultas.forEach((consulta) => {
+                const card = document.createElement('div');
+                card.className = "bg-gray-50 border border-gray-200 p-4 rounded-xl flex justify-between items-center text-sm";
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-gray-800">${consulta.especialidade} — ${consulta.medico}</h4>
+                        <p class="text-xs text-gray-600">${consulta.ubs}</p>
+                        <p class="text-xs font-semibold text-blue-600 mt-1">📅 ${consulta.data} às ${consulta.hora}</p>
+                    </div>
+                    <button onclick="cancelarConsulta('${consulta.id}')" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition cursor-pointer">
+                        Cancelar
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectEspecialidade(esp, medico) {
+            rascunhoAgendamento.especialidade = esp;
+            rascunhoAgendamento.medico = medico;
+            nextStep('sched2');
+        }
+
+        function selectUBS(ubs) {
+            rascunhoAgendamento.ubs = ubs;
+            atualizarHorariosDisponiveis();
+            nextStep('sched3');
+        }
+
+        function atualizarHorariosDisponiveis() {
+            const grade = document.getElementById('grade-horarios');
+            grade.innerHTML = '';
+
+            const inputDate = document.getElementById('input-date').value;
+            if(!inputDate) return;
+            const dataFormatada = inputDate.split('-').reverse().join('/');
+
+            const horariosPadrao = ["08:00", "09:30", "14:00", "20:00"];
+
+            horariosPadrao.forEach(hora => {
+                const jaOcupado = bancoAgendamentos.some(a => 
+                    a.medico === rascunhoAgendamento.medico && 
+                    a.data === dataFormatada && 
+                    a.hora === hora
+                );
+
+                const btn = document.createElement('button');
+                btn.innerText = hora;
+
+                if (jaOcupado) {
+                    btn.className = "bg-gray-200 text-gray-400 border border-gray-300 p-2 rounded-lg text-center cursor-not-allowed text-xs font-medium line-through";
+                    btn.disabled = true;
+                } else {
+                    btn.className = "border border-blue-200 p-2 rounded-lg text-center text-gray-800 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition cursor-pointer font-medium";
+                    btn.onclick = () => finalizarSelecaoTempo(dataFormatada, hora);
+                }
+                grade.appendChild(btn);
+            });
+        }
+
+        function finalizarSelecaoTempo(data, hora) {
+            rascunhoAgendamento.data = data;
+            rascunhoAgendamento.hora = hora;
+
+            document.getElementById('conf-paciente').innerText = usuarioSessao.nome;
+            document.getElementById('conf-cpf').innerText = usuarioSessao.cpf;
+            document.getElementById('conf-especialidade').innerText = rascunhoAgendamento.especialidade;
+            document.getElementById('conf-medico').innerText = rascunhoAgendamento.medico;
+            document.getElementById('conf-ubs').innerText = rascunhoAgendamento.ubs;
+            document.getElementById('conf-data-hora').innerText = `${rascunhoAgendamento.data} às ${rascunhoAgendamento.hora}`;
+
+            nextStep('sched4');
+        }
+
+        function salvarAgendamento() {
+            const novoAgendamento = {
+                id: 'REG-' + Date.now(),
+                pacienteCpf: usuarioSessao.cpf,
+                pacienteNome: usuarioSessao.nome,
+                especialidade: rascunhoAgendamento.especialidade,
+                medico: rascunhoAgendamento.medico,
+                ubs: rascunhoAgendamento.ubs,
+                data: rascunhoAgendamento.data,
+                hora: rascunhoAgendamento.hora
+            };
+
+            bancoAgendamentos.push(novoAgendamento);
+            localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+            
+            nextStep('success');
+        }
+
+        function cancelarConsulta(idConsulta) {
+            if(confirm("Deseja realmente cancelar esta consulta?")) {
+                bancoAgendamentos = bancoAgendamentos.filter(a => a.id !== idConsulta);
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                renderizarListaConsultas();
+            }
+        }
+    </script>
+</body>
+</html>
