@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Agendamento - SUS</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         .step-content { display: none; }
         .step-content.active { display: block; }
+        /* Garante que o container do mapa tenha altura */
+        #map { height: 280px; width: 100%; border-radius: 1rem; z-index: 1; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex items-center justify-center p-4">
@@ -87,7 +91,8 @@
                     <span>←</span> <span>Voltar ao Painel</span>
                 </button>
                 <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 1 de 4</span>
-                <div class="w-24"></div> </div>
+                <div class="w-24"></div>
+            </div>
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione a Especialidade</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -110,29 +115,36 @@
         </div>
 
         <div id="step-sched2" class="step-content w-full">
-            <div class="flex items-center justify-between border-b pb-4 mb-6">
+            <div class="flex items-center justify-between border-b pb-4 mb-4">
                 <button onclick="nextStep('sched1')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
                     <span>←</span> <span>Mudar Especialidade</span>
                 </button>
                 <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 2 de 4</span>
                 <div class="w-32"></div>
             </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione a Unidade de Saúde</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Selecione a Unidade de Saúde</h2>
             
-            <div class="space-y-3">
-                <div onclick="selectUBS('UBS Centro - Rua das Flores, 1123')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition">
-                    <div>
-                        <h4 class="font-bold text-gray-800">UBS Centro</h4>
-                        <p class="text-xs text-gray-500">Rua das Flores, 1123 - Jardim das Flores</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div class="space-y-3">
+                    <div onclick="selectUBS('UBS Centro - Rua das Flores, 1123')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition bg-white shadow-xs">
+                        <div>
+                            <h4 class="font-bold text-gray-800">UBS Centro</h4>
+                            <p class="text-xs text-gray-500">Rua das Flores, 1123 - Jardim das Flores</p>
+                        </div>
+                        <span class="text-sm font-semibold text-blue-600">Centro</span>
                     </div>
-                    <span class="text-sm font-semibold text-blue-600">2.3 km</span>
+                    <div onclick="selectUBS('UBS Vila Nova - Av. Principal, 450')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition bg-white shadow-xs">
+                        <div>
+                            <h4 class="font-bold text-gray-800">UBS Vila Nova</h4>
+                            <p class="text-xs text-gray-500">Av. Principal, 450</p>
+                        </div>
+                        <span class="text-sm font-semibold text-blue-600">Zona Sul</span>
+                    </div>
+                    <p class="text-xs text-gray-400 italic">💡 Você também pode clicar nos pontos azuis diretamente no mapa ao lado para selecionar!</p>
                 </div>
-                <div onclick="selectUBS('UBS Vila Nova - Av. Principal, 450')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition">
-                    <div>
-                        <h4 class="font-bold text-gray-800">UBS Vila Nova</h4>
-                        <p class="text-xs text-gray-500">Av. Principal, 450</p>
-                    </div>
-                    <span class="text-sm font-semibold text-blue-600">3.0 km</span>
+                
+                <div class="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div id="map"></div>
                 </div>
             </div>
         </div>
@@ -203,6 +215,7 @@
         
         let usuarioSessao = null; 
         let rascunhoAgendamento = {};
+        let mapaLeaflet = null; // Instância global do mapa
 
         document.getElementById('input-date').value = "2026-06-25";
 
@@ -212,13 +225,62 @@
             targetStep.classList.add('active');
             
             if(stepId === 'panel') carregarPainelUsuario();
+            
+            // INICIALIZAÇÃO DO MAPA: Só renderiza quando a tela da UBS abre
+            if(stepId === 'sched2') {
+                inicializarMapa();
+            }
 
-            // Gerenciamento de foco inteligente para o "Enter" funcionar perfeitamente
             if(stepId === 'sched4') {
                 document.getElementById('btn-confirmar-final').focus();
             } else if(stepId === 'success') {
                 document.getElementById('btn-sucesso-voltar').focus();
             }
+        }
+
+        // Função responsável por construir o Mapa Interativo
+        function inicializarMapa() {
+            // Coordenadas centrais fictícias (simulando uma cidade brasileira)
+            const centroCidade = [-23.55052, -46.633308]; 
+
+            // Evita recriar o mapa caso o usuário volte nessa tela múltiplas vezes
+            if (mapaLeaflet !== null) {
+                setTimeout(() => { mapaLeaflet.invalidateSize(); }, 100);
+                return;
+            }
+
+            // Inicializa o mapa Leaflet apontado para o centro do cenário
+            mapaLeaflet = L.map('map').setView(centroCidade, 13);
+
+            // Carrega os blocos visuais gráficos gratuitos do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mapaLeaflet);
+
+            // Definição dos pontos geográficos das duas UBS cadastrados no HTML
+            const localizacoesUBS = [
+                {
+                    nome: "UBS Centro - Rua das Flores, 1123",
+                    coordenadas: [-23.5489, -46.6388],
+                    popupTexto: "<b>UBS Centro</b><br>Clique para selecionar esta unidade."
+                },
+                {
+                    nome: "UBS Vila Nova - Av. Principal, 450",
+                    coordenadas: [-23.5599, -46.6201],
+                    popupTexto: "<b>UBS Vila Nova</b><br>Clique para selecionar esta unidade."
+                }
+            ];
+
+            // Renderiza cada ponto no mapa com um marcador clicável
+            localizacoesUBS.forEach(ubs => {
+                const marcador = L.marker(ubs.coordenadas).addTo(mapaLeaflet);
+                marcador.bindPopup(ubs.popupTexto);
+                
+                // Evento: Se clicar no ponto do mapa, já avança para o próximo passo selecionando a UBS
+                marcador.on('click', function() {
+                    setTimeout(() => { selectUBS(ubs.nome); }, 500); 
+                });
+            });
         }
 
         function verificarFluxoCPF() {
@@ -251,6 +313,7 @@
             }
         }
 
+        /* [Restante das funções originais mantidas sem alteração de escopo] */
         function autenticarUsuario() {
             const cpf = document.getElementById('login-cpf').value.trim();
             const senha = document.getElementById('login-senha').value;
