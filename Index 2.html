@@ -17,6 +17,7 @@
 
     <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl overflow-hidden min-h-[580px] flex flex-col justify-between p-8 relative">
         
+        <!-- MODAL: PERFIL (Compartilhado Paciente/Médico) -->
         <div id="modal-perfil" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 9999;">
             <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
                 <div class="flex justify-between items-center border-b pb-2">
@@ -48,6 +49,7 @@
             </div>
         </div>
 
+        <!-- TELA 1: LOGIN E CADASTRO -->
         <div id="step-login" class="step-content active max-w-md mx-auto w-full text-center my-auto">
             <div class="flex justify-center mb-6">
                 <div class="flex items-center space-x-2 text-blue-600 font-bold text-4xl">
@@ -92,6 +94,7 @@
             </div>
         </div>
 
+        <!-- TELA 2: PAINEL DO PACIENTE -->
         <div id="step-panel" class="step-content w-full">
             <div class="flex justify-between items-center border-b pb-4 mb-6">
                 <h1 class="text-2xl font-bold text-gray-800">Painel do Paciente</h1>
@@ -127,6 +130,7 @@
             </div>
         </div>
 
+        <!-- TELA 3: PAINEL DO MÉDICO -->
         <div id="step-panel-medico" class="step-content w-full">
             <div class="flex justify-between items-center border-b pb-4 mb-6">
                 <h1 class="text-2xl font-bold text-gray-800">Dashboard Médico</h1>
@@ -145,6 +149,7 @@
                 <div id="lista-solicitacoes-medico" class="space-y-3"></div>
             </div>
 
+            <!-- MODAL INTERNO DA DEFINIÇÃO DE HORÁRIOS DO MÉDICO -->
             <div id="modal-propor-horario" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 10000;">
                 <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
                     <h3 class="text-md font-bold text-gray-800" id="titulo-modal-medico">Definir Data e Horário</h3>
@@ -175,6 +180,7 @@
             </div>
         </div>
 
+        <!-- PASSO 1 PACIENTE: SELECIONAR ESPECIALIDADE -->
         <div id="step-sched1" class="step-content w-full">
             <div class="flex items-center justify-between border-b pb-4 mb-6">
                 <button onclick="nextStep('panel')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
@@ -187,6 +193,7 @@
             <div id="grid-especialidades" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
         </div>
 
+        <!-- PASSO 2 PACIENTE: SELECIONAR MÉDICO -->
         <div id="step-sched-medico" class="step-content w-full">
             <div class="flex items-center justify-between border-b pb-4 mb-6">
                 <button onclick="nextStep('sched1')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
@@ -199,6 +206,7 @@
             <div id="grid-medicos-disponiveis" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </div>
 
+        <!-- PASSO 3 PACIENTE: SELECIONAR UNIDADE DE SAÚDE -->
         <div id="step-sched2" class="step-content w-full">
             <div class="flex items-center justify-between border-b pb-4 mb-4">
                 <button onclick="nextStep('sched-medico')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
@@ -230,6 +238,7 @@
             </div>
         </div>
 
+        <!-- TELA DE ENVIO DE SOLICITAÇÃO BEM-SUCEDIDA -->
         <div id="step-success" class="step-content w-full text-center py-8">
             <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✈️</div>
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Solicitação Enviada!</h2>
@@ -237,28 +246,37 @@
             <button onclick="nextStep('panel')" class="mt-6 bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer">Voltar ao Meu Painel</button>
         </div>
 
+        <!-- TELA DO PACIENTE: CONFIRMAR HORÁRIO RECEBIDO OU REMARCAR -->
         <div id="step-confirmar-proposta" class="step-content w-full">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Análise de Horário Proposto</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center" id="titulo-tela-analise">Análise de Horário Proposto</h2>
             <div class="bg-blue-50 p-6 border rounded-2xl space-y-2 mb-6 text-sm text-gray-700">
                 <p><strong>Médico:</strong> <span id="prop-view-medico"></span></p>
                 <p><strong>Local:</strong> <span id="prop-view-ubs"></span></p>
-                <p><strong>Horário proposto:</strong> <span id="prop-view-datetime" class="text-blue-700 font-bold"></span></p>
+                <p><strong>Horário atual:</strong> <span id="prop-view-datetime" class="text-blue-700 font-bold"></span></p>
                 <div id="alerta-remarcacao-paciente" class="hidden text-xs bg-red-100 text-red-800 p-2 rounded-lg font-medium">⚠️ Atenção: O médico solicitou remarcação para esta consulta já agendada.</div>
             </div>
             
             <div class="space-y-4">
-                <div class="flex space-x-4">
+                <!-- Botões para consultas pendentes de aceite -->
+                <div id="botoes-fluxo-proposta" class="flex space-x-4">
                     <button onclick="abrirCamposContraproposta()" class="w-1/2 bg-yellow-500 text-white font-medium py-3 rounded-xl hover:bg-yellow-600 transition cursor-pointer">Recusar e Sugerir outro</button>
                     <button onclick="pacienteAceitarHorario()" class="w-1/2 bg-green-600 text-white font-medium py-3 rounded-xl hover:bg-green-700 transition shadow cursor-pointer">Aceitar Agendamento</button>
                 </div>
 
+                <!-- Botão isolado caso o paciente queira remarcar uma consulta já Confirmada -->
+                <div id="botoes-fluxo-confirmado" class="hidden">
+                    <button onclick="abrirCamposContraproposta()" class="w-full bg-orange-500 text-white font-medium py-3 rounded-xl hover:bg-orange-600 transition cursor-pointer">
+                        🚨 Tive um imprevisto / Solicitar nova data
+                    </button>
+                </div>
+
+                <!-- Painel oculto de contraproposta em texto livre -->
                 <div id="painel-contraproposta" class="hidden bg-gray-50 border p-4 rounded-xl space-y-3">
-                    <h4 class="text-xs font-bold text-gray-600 uppercase">Qual o melhor dia e horário para você?</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="date" id="contra-data" class="border p-2 rounded-lg text-xs bg-white">
-                        <input type="time" id="contra-hora" class="border p-2 rounded-lg text-xs bg-white">
+                    <h4 class="text-xs font-bold text-gray-600 uppercase">Escreva o motivo e sua sugestão de melhor dia/horário:</h4>
+                    <div>
+                        <textarea id="contra-texto-livre" rows="3" placeholder="Ex: Fiquei doente e não poderei ir. Conseguem me encaixar em qualquer dia da próxima semana na parte da manhã?" class="w-full border p-2.5 rounded-lg text-xs bg-white resize-none outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"></textarea>
                     </div>
-                    <button onclick="pacienteEnviarContraproposta()" class="w-full bg-blue-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-blue-700 cursor-pointer">Enviar Sugestão ao Médico</button>
+                    <button onclick="pacienteEnviarContraproposta()" class="w-full bg-blue-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-blue-700 cursor-pointer">Enviar Justificativa ao Médico</button>
                 </div>
 
                 <div class="text-center">
@@ -559,6 +577,11 @@
                     badgeStatus = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">Aguardando análise da sua sugestão</span>`;
                 } else if (consulta.status === 'Confirmado') {
                     badgeStatus = `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-bold">Confirmada para ${consulta.data} às ${consulta.hora}</span>`;
+                    // Permite ao paciente rever ou solicitar alteração mesmo após confirmado
+                    acaoBotaoDataHora = `
+                        <button onclick="visualizarPropostaMedico('${consulta.id}')" class="text-xs bg-orange-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-orange-700 transition cursor-pointer">
+                            🔄 Solicitar Alteração
+                        </button>`;
                 }
 
                 card.innerHTML = `
@@ -624,9 +647,9 @@
                             Propor Data/Hora
                         </button>`;
                 } else if(demanda.status === 'Contraproposta Enviada') {
-                    labelExtra = `<div class="text-xs text-yellow-700 font-medium bg-yellow-50 p-2 rounded-lg mt-1">⚠️ Paciente recusou o anterior. Ele prefere: <strong>${demanda.sugestaoPaciente}</strong></div>`;
+                    labelExtra = `<div class="text-xs text-yellow-700 font-medium bg-yellow-50 p-2 rounded-lg mt-1">⚠️ O Paciente solicitou alteração: <strong class="italic">"${demanda.sugestaoPaciente}"</strong></div>`;
                     painelAcao = `
-                        <button onclick="abrirModalProposta('${demanda.id}', 'Avaliar Contraproposta', '${demanda.sugestaoPaciente}')" class="bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-yellow-700 cursor-pointer">
+                        <button onclick="abrirModalProposta('${demanda.id}', 'Avaliar Nova Sugestão', '${demanda.sugestaoPaciente}')" class="bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-yellow-700 cursor-pointer">
                             Sugerir Novo Horário
                         </button>`;
                 } else if(demanda.status === 'Proposta Disponível' || demanda.status === 'Remarcação do Médico') {
@@ -660,7 +683,7 @@
             
             const divAlerta = document.getElementById('alerta-contraproposta');
             if(contrapropostaText) {
-                divAlerta.innerText = `O paciente sugeriu: ${contrapropostaText}`;
+                divAlerta.innerText = `Mensagem do paciente: "${contrapropostaText}"`;
                 divAlerta.classList.remove('hidden');
             } else {
                 divAlerta.classList.add('hidden');
@@ -689,6 +712,7 @@
                 const statusAntigo = bancoAgendamentos[idx].status;
                 bancoAgendamentos[idx].data = dataFormatada;
                 bancoAgendamentos[idx].hora = horaInput;
+                // Se o médico está alterando algo já confirmado ou em remarque, mantém status de remarque
                 bancoAgendamentos[idx].status = (statusAntigo === 'Confirmado' || statusAntigo === 'Remarcação do Médico') ? 'Remarcação do Médico' : 'Proposta Disponível';
                 
                 localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
@@ -718,12 +742,27 @@
                 document.getElementById('prop-view-datetime').innerText = `${consulta.data} às ${consulta.hora}`;
                 
                 const alertaRemarcar = document.getElementById('alerta-remarcacao-paciente');
-                if(consulta.status === 'Remarcação do Médico') {
-                    alertaRemarcar.classList.remove('hidden');
-                } else {
+                const divPropostaBotoes = document.getElementById('botoes-fluxo-proposta');
+                const divConfirmadoBotoes = document.getElementById('botoes-fluxo-confirmado');
+                const tituloTela = document.getElementById('titulo-tela-analise');
+
+                if (consulta.status === 'Confirmado') {
+                    tituloTela.innerText = "Sinalizar Imprevisto / Alteração";
+                    divPropostaBotoes.classList.add('hidden');
+                    divConfirmadoBotoes.classList.remove('hidden');
                     alertaRemarcar.classList.add('hidden');
+                } else {
+                    tituloTela.innerText = "Análise de Horário Proposto";
+                    divPropostaBotoes.classList.remove('hidden');
+                    divConfirmadoBotoes.classList.add('hidden');
+                    if(consulta.status === 'Remarcação do Médico') {
+                        alertaRemarcar.classList.remove('hidden');
+                    } else {
+                        alertaRemarcar.classList.add('hidden');
+                    }
                 }
 
+                document.getElementById('contra-texto-livre').value = '';
                 document.getElementById('painel-contraproposta').classList.add('hidden');
                 nextStep('confirmar-proposta');
             }
@@ -733,7 +772,7 @@
             const idx = bancoAgendamentos.findIndex(a => a.id === idAgendamentoSelecionadoParaProposta);
             if(idx !== -1) {
                 bancoAgendamentos[idx].status = 'Confirmado';
-                bancoAgendamentos[idx].sugestaoPaciente = ''; // Limpa as notas antigas
+                bancoAgendamentos[idx].sugestaoPaciente = ''; 
                 localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
                 alert("Agendamento confirmado com sucesso!");
                 nextStep('panel');
@@ -745,23 +784,21 @@
         }
 
         function pacienteEnviarContraproposta() {
-            const dataInput = document.getElementById('contra-data').value;
-            const horaInput = document.getElementById('contra-hora').value;
+            const textoSugestao = document.getElementById('contra-texto-livre').value.trim();
 
-            if(!dataInput || !horaInput) {
-                alert("Preencha o dia e horário que gostaria para sugerir ao médico.");
+            if(!textoSugestao) {
+                alert("Por favor, digite sua justificativa ou preferência de horário antes de enviar.");
                 return;
             }
 
-            const dataFormatada = dataInput.split('-').reverse().join('/');
             const idx = bancoAgendamentos.findIndex(a => a.id === idAgendamentoSelecionadoParaProposta);
             
             if(idx !== -1) {
                 bancoAgendamentos[idx].status = 'Contraproposta Enviada';
-                bancoAgendamentos[idx].sugestaoPaciente = `${dataFormatada} às ${horaInput}`;
+                bancoAgendamentos[idx].sugestaoPaciente = textoSugestao;
                 
                 localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
-                alert("Sua sugestão de dia/horário foi enviada ao médico com sucesso!");
+                alert("Sua solicitação de alteração foi encaminhada ao médico!");
                 nextStep('panel');
             }
         }
