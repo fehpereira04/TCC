@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agendamento - SUS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        .step-content { display: none; }
+        .step-content.active { display: block; }
+        #map { height: 280px; width: 100%; border-radius: 1rem; z-index: 1; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl overflow-hidden min-h-[580px] flex flex-col justify-between p-8 relative">
+        
+        <div id="modal-perfil" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 9999;">
+            <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="text-lg font-bold text-gray-800">Editar Meus Dados</h3>
+                    <button onclick="fecharModalPerfil()" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer">&times;</button>
+                </div>
+                <div class="space-y-3 text-left">
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1">Nome Completo</label>
+                        <input type="text" id="edit-nome" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1">Data de Nascimento</label>
+                        <input type="date" id="edit-nasc" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div id="campo-edit-especialidade" class="hidden">
+                        <label class="block text-gray-500 text-xs mb-1">Especialidade Médica</label>
+                        <input type="text" id="edit-especialidade" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1">Senha</label>
+                        <input type="password" id="edit-senha" class="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="fecharModalPerfil()" class="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-xl text-sm font-medium hover:bg-gray-300 cursor-pointer">Cancelar</button>
+                    <button onclick="salvarAlteracoesPerfil()" class="w-1/2 bg-blue-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-blue-700 cursor-pointer">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-login" class="step-content active max-w-md mx-auto w-full text-center my-auto">
+            <div class="flex justify-center mb-6">
+                <div class="flex items-center space-x-2 text-blue-600 font-bold text-4xl">
+                    <span>💙</span> <span class="tracking-wider">sus</span>
+                </div>
+            </div>
+            
+            <div class="mb-4 bg-gray-100 p-1 rounded-xl flex">
+                <button id="btn-tipo-paciente" onclick="setTipoUsuario('paciente')" class="w-1/2 py-2 text-sm font-medium rounded-lg bg-white text-blue-600 shadow-xs cursor-pointer">Paciente</button>
+                <button id="btn-tipo-medico" onclick="setTipoUsuario('medico')" class="w-1/2 py-2 text-sm font-medium rounded-lg text-gray-600 cursor-pointer">Médico</button>
+            </div>
+
+            <div class="space-y-4 text-left" onkeydown="if(event.key === 'Enter') autenticarUsuario()">
+                <div>
+                    <label class="block text-gray-500 text-sm mb-1">CPF (Apenas números)</label>
+                    <input type="text" id="login-cpf" oninput="verificarFluxoCPF()" placeholder="Ex: 12345678901" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div id="contexto-msg" class="text-xs text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg text-center hidden"></div>
+
+                <div id="campos-cadastro" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-gray-500 text-sm mb-1">Nome Completo</label>
+                        <input type="text" id="login-nome" placeholder="Seu nome" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-sm mb-1">Data de Nascimento</label>
+                        <input type="date" id="login-nasc" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div id="campo-cadastro-especialidade" class="hidden">
+                        <label class="block text-gray-500 text-sm mb-1">Especialidade</label>
+                        <input type="text" id="login-especialidade" placeholder="Ex: Cardiologia" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div id="campo-senha" class="hidden">
+                    <label id="label-senha" class="block text-gray-500 text-sm mb-1">Defina sua Senha</label>
+                    <input type="password" id="login-senha" placeholder="Digite a senha" class="w-full border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <button onclick="autenticarUsuario()" class="w-full bg-[#0056b3] text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition shadow cursor-pointer">Acessar Sistema</button>
+            </div>
+        </div>
+
+        <div id="step-panel" class="step-content w-full">
+            <div class="flex justify-between items-center border-b pb-4 mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Painel do Paciente</h1>
+                <div class="text-right">
+                    <span class="text-sm text-gray-600 block">Bem-vindo, <strong id="painel-nome-usuario">...</strong></span>
+                    <div class="flex items-center justify-end space-x-3 mt-1">
+                        <button onclick="abrirModalPerfil()" class="text-xs text-blue-600 underline hover:text-blue-800 cursor-pointer font-medium">✏️ Editar Cadastro</button>
+                        <span class="text-gray-300 text-xs">|</span>
+                        <button onclick="logout()" class="text-xs text-gray-500 underline hover:text-gray-700 cursor-pointer font-medium">Sair</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 text-center my-6">
+                <h2 class="text-xl font-bold text-blue-900 mb-1">Solicitar Novo Agendamento</h2>
+                <p class="text-gray-600 mb-4 text-xs">Escolha a especialidade, localidade e o médico para iniciar.</p>
+                <button onclick="iniciarNovoAgendamento()" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-blue-700 transition shadow cursor-pointer">Agendar Agora</button>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="font-semibold text-gray-700 mb-3">Minhas Solicitações e Consultas</h3>
+                <div id="lista-consultas" class="space-y-3"></div>
+            </div>
+
+            <div class="mt-12 pt-4 border-t border-red-100 flex justify-between items-center bg-red-50/50 -mx-8 -mb-8 p-6 rounded-b-3xl">
+                <div>
+                    <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider">Zona de Privacidade</h4>
+                    <p class="text-xs text-gray-500">Excluir permanentemente seus dados deste navegador.</p>
+                </div>
+                <button onclick="deletarConta()" class="text-xs bg-white text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-600 hover:text-white transition font-medium cursor-pointer">
+                    Deletar minha conta
+                </button>
+            </div>
+        </div>
+
+        <div id="step-panel-medico" class="step-content w-full">
+            <div class="flex justify-between items-center border-b pb-4 mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">Dashboard Médico</h1>
+                <div class="text-right">
+                    <span class="text-sm text-gray-600 block">Dr(a). <strong id="painel-medico-usuario">...</strong> (<span id="painel-medico-esp" class="text-xs text-blue-600 font-bold"></span>)</span>
+                    <div class="flex items-center justify-end space-x-3 mt-1">
+                        <button onclick="abrirModalPerfil()" class="text-xs text-blue-600 underline hover:text-blue-800 cursor-pointer font-medium">✏️ Editar Cadastro</button>
+                        <span class="text-gray-300 text-xs">|</span>
+                        <button onclick="logout()" class="text-xs text-gray-500 underline hover:text-gray-700 cursor-pointer font-medium">Sair</button>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-gray-700 mb-3">Solicitações Pendentes de Horário e Consultas</h3>
+                <div id="lista-solicitacoes-medico" class="space-y-3"></div>
+            </div>
+
+            <div id="modal-propor-horario" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4" style="z-index: 10000;">
+                <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+                    <h3 class="text-md font-bold text-gray-800" id="titulo-modal-medico">Definir Data e Horário</h3>
+                    <div id="alerta-contraproposta" class="hidden bg-yellow-50 text-yellow-800 p-2.5 rounded-xl text-xs border border-yellow-200"></div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Selecione o Dia</label>
+                        <input type="date" id="prop-data" class="w-full border p-2 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Selecione o Horário</label>
+                        <input type="time" id="prop-hora" class="w-full border p-2 rounded-lg text-sm">
+                    </div>
+                    <div class="flex space-x-2 pt-2">
+                        <button onclick="fecharModalProposta()" class="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-lg text-xs cursor-pointer">Cancelar</button>
+                        <button onclick="enviarPropostaHorario()" class="w-1/2 bg-green-600 text-white py-2 rounded-lg text-xs font-medium cursor-pointer">Enviar ao Paciente</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12 pt-4 border-t border-red-100 flex justify-between items-center bg-red-50/50 -mx-8 -mb-8 p-6 rounded-b-3xl">
+                <div>
+                    <h4 class="text-xs font-bold text-red-800 uppercase tracking-wider">Zona de Risco</h4>
+                    <p class="text-xs text-gray-500">Excluir permanentemente seu registro médico do sistema.</p>
+                </div>
+                <button onclick="deletarConta()" class="text-xs bg-white text-red-600 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-600 hover:text-white transition font-medium cursor-pointer">
+                    Deletar minha conta
+                </button>
+            </div>
+        </div>
+
+        <div id="step-sched1" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('panel')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Voltar ao Painel</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 1 de 3</span>
+                <div class="w-24"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione a Especialidade</h2>
+            <div id="grid-especialidades" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div id="step-sched-medico" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-6">
+                <button onclick="nextStep('sched1')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Voltar</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 2 de 3</span>
+                <div class="w-24"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Selecione o(a) Médico(a)</h2>
+            <div id="grid-medicos-disponiveis" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+
+        <div id="step-sched2" class="step-content w-full">
+            <div class="flex items-center justify-between border-b pb-4 mb-4">
+                <button onclick="nextStep('sched-medico')" class="text-sm font-medium text-gray-500 hover:text-blue-600 flex items-center space-x-1 cursor-pointer">
+                    <span>←</span> <span>Mudar Médico</span>
+                </button>
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-widest">Passo 3 de 3</span>
+                <div class="w-32"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Selecione a Unidade de Saúde</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div class="space-y-3">
+                    <div onclick="selectUBS('UBS Centro - Rua das Flores, 1123')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition bg-white shadow-xs">
+                        <div>
+                            <h4 class="font-bold text-gray-800">UBS Centro</h4>
+                            <p class="text-xs text-gray-500">Rua das Flores, 1123 - Jardim das Flores</p>
+                        </div>
+                    </div>
+                    <div onclick="selectUBS('UBS Vila Nova - Av. Principal, 450')" class="border border-gray-200 p-4 rounded-xl flex justify-between items-center hover:border-blue-500 cursor-pointer transition bg-white shadow-xs">
+                        <div>
+                            <h4 class="font-bold text-gray-800">UBS Vila Nova</h4>
+                            <p class="text-xs text-gray-500">Av. Principal, 450</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="step-success" class="step-content w-full text-center py-8">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✈️</div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Solicitação Enviada!</h2>
+            <p class="text-sm text-gray-500">O pedido foi encaminhado. Fique atento às atualizações do painel.</p>
+            <button onclick="nextStep('panel')" class="mt-6 bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer">Voltar ao Meu Painel</button>
+        </div>
+
+        <div id="step-confirmar-proposta" class="step-content w-full">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Análise de Horário Proposto</h2>
+            <div class="bg-blue-50 p-6 border rounded-2xl space-y-2 mb-6 text-sm text-gray-700">
+                <p><strong>Médico:</strong> <span id="prop-view-medico"></span></p>
+                <p><strong>Local:</strong> <span id="prop-view-ubs"></span></p>
+                <p><strong>Horário proposto:</strong> <span id="prop-view-datetime" class="text-blue-700 font-bold"></span></p>
+                <div id="alerta-remarcacao-paciente" class="hidden text-xs bg-red-100 text-red-800 p-2 rounded-lg font-medium">⚠️ Atenção: O médico solicitou remarcação para esta consulta já agendada.</div>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex space-x-4">
+                    <button onclick="abrirCamposContraproposta()" class="w-1/2 bg-yellow-500 text-white font-medium py-3 rounded-xl hover:bg-yellow-600 transition cursor-pointer">Recusar e Sugerir outro</button>
+                    <button onclick="pacienteAceitarHorario()" class="w-1/2 bg-green-600 text-white font-medium py-3 rounded-xl hover:bg-green-700 transition shadow cursor-pointer">Aceitar Agendamento</button>
+                </div>
+
+                <div id="painel-contraproposta" class="hidden bg-gray-50 border p-4 rounded-xl space-y-3">
+                    <h4 class="text-xs font-bold text-gray-600 uppercase">Qual o melhor dia e horário para você?</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="contra-data" class="border p-2 rounded-lg text-xs bg-white">
+                        <input type="time" id="contra-hora" class="border p-2 rounded-lg text-xs bg-white">
+                    </div>
+                    <button onclick="pacienteEnviarContraproposta()" class="w-full bg-blue-600 text-white text-xs font-medium py-2 rounded-lg hover:bg-blue-700 cursor-pointer">Enviar Sugestão ao Médico</button>
+                </div>
+
+                <div class="text-center">
+                    <button onclick="nextStep('panel')" class="text-xs text-gray-500 underline cursor-pointer">Voltar ao painel</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let bancoUsuarios = JSON.parse(localStorage.getItem('sus_usuarios')) || {};
+        let bancoAgendamentos = JSON.parse(localStorage.getItem('sus_agendamentos')) || [];
+        
+        let usuarioSessao = null; 
+        let tipoSessao = 'paciente'; 
+        let rascunhoAgendamento = {};
+        let mapaLeaflet = null;
+        let idConsultaEmEdicao = null;
+        let idAgendamentoSelecionadoParaProposta = null;
+
+        function setTipoUsuario(tipo) {
+            tipoSessao = tipo;
+            document.getElementById('btn-tipo-paciente').className = tipo === 'paciente' ? "w-1/2 py-2 text-sm font-medium rounded-lg bg-white text-blue-600 shadow-xs cursor-pointer" : "w-1/2 py-2 text-sm font-medium rounded-lg text-gray-600 cursor-pointer";
+            document.getElementById('btn-tipo-medico').className = tipo === 'medico' ? "w-1/2 py-2 text-sm font-medium rounded-lg bg-white text-blue-600 shadow-xs cursor-pointer" : "w-1/2 py-2 text-sm font-medium rounded-lg text-gray-600 cursor-pointer";
+            
+            if(tipo === 'medico') {
+                document.getElementById('campo-cadastro-especialidade').classList.remove('hidden');
+            } else {
+                document.getElementById('campo-cadastro-especialidade').classList.add('hidden');
+            }
+            verificarFluxoCPF();
+        }
+
+        function nextStep(stepId) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('step-' + stepId).classList.add('active');
+            
+            if(stepId === 'panel') carregarPainelUsuario();
+            if(stepId === 'panel-medico') carregarPainelMedico();
+            if(stepId === 'sched2') inicializarMapa();
+        }
+
+        function iniciarNovoAgendamento() {
+            idConsultaEmEdicao = null;
+            rascunhoAgendamento = {};
+            
+            const gridEsp = document.getElementById('grid-especialidades');
+            gridEsp.innerHTML = '';
+            
+            const especialidadesUnicas = [...new Set(Object.values(bancoUsuarios).filter(u => u.tipo === 'medico').map(m => m.especialidade))];
+            
+            if(especialidadesUnicas.length === 0) {
+                gridEsp.innerHTML = `<p class="col-span-3 text-center text-sm text-gray-500">Nenhum médico cadastrado no sistema no momento.</p>`;
+            } else {
+                especialidadesUnicas.forEach(esp => {
+                    gridEsp.innerHTML += `
+                        <button onclick="selectEspecialidade('${esp}')" class="border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 p-6 rounded-2xl text-center transition flex flex-col items-center justify-center space-y-2 cursor-pointer">
+                            <span>🩺</span>
+                            <span class="font-bold text-gray-800">${esp}</span>
+                        </button>`;
+                });
+            }
+            nextStep('sched1');
+        }
+
+        function selectEspecialidade(esp) {
+            rascunhoAgendamento.especialidade = esp;
+            const gridMedicos = document.getElementById('grid-medicos-disponiveis');
+            gridMedicos.innerHTML = '';
+            
+            const medicosFiltrados = Object.entries(bancoUsuarios).filter(([cpf, u]) => u.tipo === 'medico' && u.especialidade === esp);
+            
+            medicosFiltrados.forEach(([cpf, medico]) => {
+                gridMedicos.innerHTML += `
+                    <button onclick="selectMedico('${cpf}', '${medico.nome}')" class="border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 p-4 rounded-xl text-left transition flex items-center justify-between cursor-pointer w-full">
+                        <div>
+                            <p class="font-bold text-gray-800">Dr(a). ${medico.nome}</p>
+                            <p class="text-xs text-gray-500">Especialidade: ${medico.especialidade}</p>
+                        </div>
+                        <span class="text-blue-600 text-sm">Selecionar →</span>
+                    </button>`;
+            });
+            nextStep('sched-medico');
+        }
+
+        function selectMedico(cpf, nome) {
+            rascunhoAgendamento.medicoCpf = cpf;
+            rascunhoAgendamento.medicoNome = nome;
+            nextStep('sched2');
+        }
+
+        function selectUBS(ubs) {
+            rascunhoAgendamento.ubs = ubs;
+            salvarSolicitacaoAgendamento();
+        }
+
+        function salvarSolicitacaoAgendamento() {
+            if (idConsultaEmEdicao) {
+                bancoAgendamentos = bancoAgendamentos.filter(a => a.id !== idConsultaEmEdicao);
+            }
+
+            const novaSolicitacao = {
+                id: idConsultaEmEdicao || 'REG-' + Date.now(),
+                pacienteCpf: usuarioSessao.cpf,
+                pacienteNome: usuarioSessao.nome,
+                especialidade: rascunhoAgendamento.especialidade,
+                medicoCpf: rascunhoAgendamento.medicoCpf,
+                medicoNome: rascunhoAgendamento.medicoNome,
+                ubs: rascunhoAgendamento.ubs,
+                status: 'Aguardando Horário', 
+                data: '',
+                hora: '',
+                sugestaoPaciente: ''
+            };
+
+            bancoAgendamentos.push(novaSolicitacao);
+            localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+            idConsultaEmEdicao = null;
+            nextStep('success');
+        }
+
+        function verificarFluxoCPF() {
+            const cpf = document.getElementById('login-cpf').value.trim();
+            const divCadastro = document.getElementById('campos-cadastro');
+            const divSenha = document.getElementById('campo-senha');
+            const labelSenha = document.getElementById('label-senha');
+            const msgContexto = document.getElementById('contexto-msg');
+
+            if(cpf.length < 3) {
+                divCadastro.classList.add('hidden');
+                divSenha.classList.add('hidden');
+                msgContexto.classList.add('hidden');
+                return;
+            }
+
+            divSenha.classList.remove('hidden');
+            msgContexto.classList.remove('hidden');
+
+            if (bancoUsuarios[cpf]) {
+                divCadastro.classList.add('hidden');
+                labelSenha.innerText = "Digite sua Senha de Acesso";
+                msgContexto.innerText = `Cadastro encontrado (${bancoUsuarios[cpf].tipo.toUpperCase()})! Informe sua senha.`;
+                msgContexto.className = "text-xs text-green-700 font-medium bg-green-50 p-2.5 rounded-lg text-center";
+                tipoSessao = bancoUsuarios[cpf].tipo;
+            } else {
+                divCadastro.classList.remove('hidden');
+                labelSenha.innerText = "Crie uma Senha para sua Conta";
+                msgContexto.innerText = `Novo Cadastro Detectado para ${tipoSessao.toUpperCase()}. Complete os dados.`;
+                msgContexto.className = "text-xs text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg text-center";
+            }
+        }
+
+        function autenticarUsuario() {
+            const cpf = document.getElementById('login-cpf').value.trim();
+            const senha = document.getElementById('login-senha').value;
+
+            if(!cpf || !senha) {
+                alert("Por favor, preencha o CPF e a Senha.");
+                return;
+            }
+
+            if (!bancoUsuarios[cpf]) {
+                const nome = document.getElementById('login-nome').value.trim();
+                const nascimento = document.getElementById('login-nasc').value;
+
+                if(!nome || !nascimento) {
+                    alert("Complete todos os dados obrigatórios do cadastro.");
+                    return;
+                }
+
+                if(tipoSessao === 'medico' && !document.getElementById('login-especialidade').value.trim()) {
+                    alert("Por favor, preencha sua especialidade médica.");
+                    return;
+                }
+
+                bancoUsuarios[cpf] = { 
+                    nome: nome, 
+                    nascimento: nascimento, 
+                    senha: senha, 
+                    tipo: tipoSessao,
+                    especialidade: tipoSessao === 'medico' ? document.getElementById('login-especialidade').value.trim() : ''
+                };
+                localStorage.setItem('sus_usuarios', JSON.stringify(bancoUsuarios));
+                alert(`Cadastro concluído com sucesso!`);
+            } else {
+                if (bancoUsuarios[cpf].senha !== senha) {
+                    alert("❌ Senha incorreta!");
+                    return;
+                }
+                tipoSessao = bancoUsuarios[cpf].tipo;
+            }
+
+            usuarioSessao = { cpf: cpf, nome: bancoUsuarios[cpf].nome };
+            if(tipoSessao === 'medico') nextStep('panel-medico'); else nextStep('panel');
+        }
+
+        function abrirModalPerfil() {
+            const dadosAtuais = bancoUsuarios[usuarioSessao.cpf];
+            document.getElementById('edit-nome').value = dadosAtuais.nome;
+            document.getElementById('edit-nasc').value = dadosAtuais.nascimento;
+            document.getElementById('edit-senha').value = dadosAtuais.senha;
+            
+            if(dadosAtuais.tipo === 'medico') {
+                document.getElementById('campo-edit-especialidade').classList.remove('hidden');
+                document.getElementById('edit-especialidade').value = dadosAtuais.especialidade;
+            } else {
+                document.getElementById('campo-edit-especialidade').classList.add('hidden');
+            }
+            document.getElementById('modal-perfil').classList.remove('hidden');
+        }
+
+        function fecharModalPerfil() {
+            document.getElementById('modal-perfil').classList.add('hidden');
+        }
+
+        function salvarAlteracoesPerfil() {
+            const novoNome = document.getElementById('edit-nome').value.trim();
+            const novoNasc = document.getElementById('edit-nasc').value;
+            const novaSenha = document.getElementById('edit-senha').value;
+
+            if(!novoNome || !novoNasc || !novaSenha) {
+                alert("Nenhum campo pode ficar vazio.");
+                return;
+            }
+
+            bancoUsuarios[usuarioSessao.cpf].nome = novoNome;
+            bancoUsuarios[usuarioSessao.cpf].nascimento = novoNasc;
+            bancoUsuarios[usuarioSessao.cpf].senha = novaSenha;
+
+            if(bancoUsuarios[usuarioSessao.cpf].tipo === 'medico') {
+                bancoUsuarios[usuarioSessao.cpf].especialidade = document.getElementById('edit-especialidade').value.trim();
+            }
+
+            localStorage.setItem('sus_usuarios', JSON.stringify(bancoUsuarios));
+            usuarioSessao.nome = novoNome;
+            
+            alert("Informações do perfil salvas!");
+            fecharModalPerfil();
+            if(tipoSessao === 'medico') carregarPainelMedico(); else carregarPainelUsuario();
+        }
+
+        function logout() {
+            usuarioSessao = null;
+            document.getElementById('login-cpf').value = '';
+            document.getElementById('login-nome').value = '';
+            document.getElementById('login-nasc').value = '';
+            document.getElementById('login-senha').value = '';
+            document.getElementById('login-especialidade').value = '';
+            verificarFluxoCPF();
+            nextStep('login');
+        }
+
+        function deletarConta() {
+            if (confirm("ATENÇÃO:\nDeseja realmente deletar permanentemente a sua conta e limpar seus registros?")) {
+                const cpfAtivo = usuarioSessao.cpf;
+                delete bancoUsuarios[cpfAtivo];
+                localStorage.setItem('sus_usuarios', JSON.stringify(bancoUsuarios));
+
+                bancoAgendamentos = bancoAgendamentos.filter(a => a.pacienteCpf !== cpfAtivo && a.medicoCpf !== cpfAtivo);
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+
+                alert("Sua conta foi completamente removida.");
+                logout();
+            }
+        }
+
+        function carregarPainelUsuario() {
+            document.getElementById('painel-nome-usuario').innerText = usuarioSessao.nome;
+            renderizarListaConsultasPaciente();
+        }
+
+        function renderizarListaConsultasPaciente() {
+            const container = document.getElementById('lista-consultas');
+            container.innerHTML = '';
+
+            const minhasConsultas = bancoAgendamentos.filter(a => a.pacienteCpf === usuarioSessao.cpf);
+
+            if (minhasConsultas.length === 0) {
+                container.innerHTML = `<div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-500 text-center">Nenhum agendamento registrado.</div>`;
+                return;
+            }
+
+            minhasConsultas.forEach((consulta) => {
+                const card = document.createElement('div');
+                card.className = "bg-gray-50 border border-gray-200 p-4 rounded-xl flex justify-between items-center text-sm";
+                
+                let acaoBotaoDataHora = '';
+                let badgeStatus = `<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-bold">${consulta.status}</span>`;
+
+                if(consulta.status === 'Proposta Disponível' || consulta.status === 'Remarcação do Médico') {
+                    badgeStatus = `<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold">Horário Pronto</span>`;
+                    acaoBotaoDataHora = `
+                        <button onclick="visualizarPropostaMedico('${consulta.id}')" class="text-xs bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-purple-700 transition cursor-pointer">
+                            🗓️ Ver Data/Hora
+                        </button>`;
+                } else if(consulta.status === 'Contraproposta Enviada') {
+                    badgeStatus = `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">Aguardando análise da sua sugestão</span>`;
+                } else if (consulta.status === 'Confirmado') {
+                    badgeStatus = `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-bold">Confirmada para ${consulta.data} às ${consulta.hora}</span>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-gray-800">${consulta.especialidade} — Dr(a). ${consulta.medicoNome}</h4>
+                        <p class="text-xs text-gray-600">${consulta.ubs}</p>
+                        <div class="mt-2 flex items-center space-x-2">${badgeStatus} ${acaoBotaoDataHora}</div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="prepararEdicaoAgendamento('${consulta.id}')" class="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition cursor-pointer font-medium">
+                            Editar
+                        </button>
+                        <button onclick="cancelarConsulta('${consulta.id}')" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition cursor-pointer">
+                            Cancelar
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function prepararEdicaoAgendamento(idConsulta) {
+            idConsultaEmEdicao = idConsulta;
+            iniciarNovoAgendamento(); 
+        }
+
+        function cancelarConsulta(idConsulta) {
+            if(confirm("Deseja realmente remover/cancelar esta consulta?")) {
+                bancoAgendamentos = bancoAgendamentos.filter(a => a.id !== idConsulta);
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                if(tipoSessao === 'medico') renderizarListaSolicitacoesMedico(); else renderizarListaConsultasPaciente();
+            }
+        }
+
+        // ================= PAINEL DO MÉDICO & FLUXO DE DATAS =================
+        function carregarPainelMedico() {
+            document.getElementById('painel-medico-usuario').innerText = usuarioSessao.nome;
+            document.getElementById('painel-medico-esp').innerText = bancoUsuarios[usuarioSessao.cpf].especialidade;
+            renderizarListaSolicitacoesMedico();
+        }
+
+        function renderizarListaSolicitacoesMedico() {
+            const container = document.getElementById('lista-solicitacoes-medico');
+            container.innerHTML = '';
+
+            const minhasDemandas = bancoAgendamentos.filter(a => a.medicoCpf === usuarioSessao.cpf);
+
+            if(minhasDemandas.length === 0) {
+                container.innerHTML = `<div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-500 text-center">Nenhuma demanda ou agendamento pendente.</div>`;
+                return;
+            }
+
+            minhasDemandas.forEach(demanda => {
+                const card = document.createElement('div');
+                card.className = "bg-gray-50 border border-gray-200 p-4 rounded-xl flex justify-between items-center text-sm";
+                
+                let painelAcao = '';
+                let labelExtra = '';
+
+                if(demanda.status === 'Aguardando Horário') {
+                    painelAcao = `
+                        <button onclick="abrirModalProposta('${demanda.id}', 'Definir Horário')" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-blue-700 cursor-pointer">
+                            Propor Data/Hora
+                        </button>`;
+                } else if(demanda.status === 'Contraproposta Enviada') {
+                    labelExtra = `<div class="text-xs text-yellow-700 font-medium bg-yellow-50 p-2 rounded-lg mt-1">⚠️ Paciente recusou o anterior. Ele prefere: <strong>${demanda.sugestaoPaciente}</strong></div>`;
+                    painelAcao = `
+                        <button onclick="abrirModalProposta('${demanda.id}', 'Avaliar Contraproposta', '${demanda.sugestaoPaciente}')" class="bg-yellow-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-yellow-700 cursor-pointer">
+                            Sugerir Novo Horário
+                        </button>`;
+                } else if(demanda.status === 'Proposta Disponível' || demanda.status === 'Remarcação do Médico') {
+                    painelAcao = `<span class="text-xs italic text-gray-500">Aguardando aceite do paciente</span>`;
+                } else if(demanda.status === 'Confirmado') {
+                    labelExtra = `<div class="text-xs text-green-700 font-bold mt-1">✓ Marcado: ${demanda.data} às ${demanda.hora}</div>`;
+                    painelAcao = `
+                        <button onclick="solicitarRemarcacaoMedico('${demanda.id}')" class="bg-orange-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600 cursor-pointer">
+                            🔄 Remarcar Dia
+                        </button>`;
+                }
+
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <p class="font-bold text-gray-800">Paciente: ${demanda.pacienteNome}</p>
+                        <p class="text-xs text-gray-500">Unidade: ${demanda.ubs}</p>
+                        ${labelExtra}
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        ${painelAcao}
+                        <button onclick="cancelarConsulta('${demanda.id}')" class="text-xs bg-red-50 text-red-600 p-1.5 rounded-lg hover:bg-red-500 hover:text-white transition">Recusar</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function abrirModalProposta(id, titulo, contrapropostaText = '') {
+            idAgendamentoSelecionadoParaProposta = id;
+            document.getElementById('titulo-modal-medico').innerText = titulo;
+            
+            const divAlerta = document.getElementById('alerta-contraproposta');
+            if(contrapropostaText) {
+                divAlerta.innerText = `O paciente sugeriu: ${contrapropostaText}`;
+                divAlerta.classList.remove('hidden');
+            } else {
+                divAlerta.classList.add('hidden');
+            }
+
+            document.getElementById('modal-propor-horario').classList.remove('hidden');
+        }
+
+        function fecharModalProposta() {
+            document.getElementById('modal-propor-horario').classList.add('hidden');
+        }
+
+        function enviarPropostaHorario() {
+            const dataInput = document.getElementById('prop-data').value;
+            const horaInput = document.getElementById('prop-hora').value;
+
+            if(!dataInput || !horaInput) {
+                alert("Por favor, selecione tanto o dia quanto o horário.");
+                return;
+            }
+
+            const dataFormatada = dataInput.split('-').reverse().join('/');
+            const idx = bancoAgendamentos.findIndex(a => a.id === idAgendamentoSelecionadoParaProposta);
+            
+            if(idx !== -1) {
+                const statusAntigo = bancoAgendamentos[idx].status;
+                bancoAgendamentos[idx].data = dataFormatada;
+                bancoAgendamentos[idx].hora = horaInput;
+                bancoAgendamentos[idx].status = (statusAntigo === 'Confirmado' || statusAntigo === 'Remarcação do Médico') ? 'Remarcação do Médico' : 'Proposta Disponível';
+                
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                alert("Horários encaminhados! O paciente receberá a atualização no painel.");
+                fecharModalProposta();
+                carregarPainelMedico();
+            }
+        }
+
+        function solicitarRemarcacaoMedico(id) {
+            const idx = bancoAgendamentos.findIndex(a => a.id === id);
+            if(idx !== -1) {
+                bancoAgendamentos[idx].status = 'Remarcação do Médico';
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                abrirModalProposta(id, 'Solicitar Nova Remarcação');
+            }
+        }
+
+        // ================= INTERAÇÕES DE ACEITE/RECUSA DO PACIENTE =================
+        function visualizarPropostaMedico(id) {
+            idAgendamentoSelecionadoParaProposta = id;
+            const consulta = bancoAgendamentos.find(a => a.id === id);
+            
+            if(consulta) {
+                document.getElementById('prop-view-medico').innerText = `Dr(a). ${consulta.medicoNome}`;
+                document.getElementById('prop-view-ubs').innerText = consulta.ubs;
+                document.getElementById('prop-view-datetime').innerText = `${consulta.data} às ${consulta.hora}`;
+                
+                const alertaRemarcar = document.getElementById('alerta-remarcacao-paciente');
+                if(consulta.status === 'Remarcação do Médico') {
+                    alertaRemarcar.classList.remove('hidden');
+                } else {
+                    alertaRemarcar.classList.add('hidden');
+                }
+
+                document.getElementById('painel-contraproposta').classList.add('hidden');
+                nextStep('confirmar-proposta');
+            }
+        }
+
+        function pacienteAceitarHorario() {
+            const idx = bancoAgendamentos.findIndex(a => a.id === idAgendamentoSelecionadoParaProposta);
+            if(idx !== -1) {
+                bancoAgendamentos[idx].status = 'Confirmado';
+                bancoAgendamentos[idx].sugestaoPaciente = ''; // Limpa as notas antigas
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                alert("Agendamento confirmado com sucesso!");
+                nextStep('panel');
+            }
+        }
+
+        function abrirCamposContraproposta() {
+            document.getElementById('painel-contraproposta').classList.remove('hidden');
+        }
+
+        function pacienteEnviarContraproposta() {
+            const dataInput = document.getElementById('contra-data').value;
+            const horaInput = document.getElementById('contra-hora').value;
+
+            if(!dataInput || !horaInput) {
+                alert("Preencha o dia e horário que gostaria para sugerir ao médico.");
+                return;
+            }
+
+            const dataFormatada = dataInput.split('-').reverse().join('/');
+            const idx = bancoAgendamentos.findIndex(a => a.id === idAgendamentoSelecionadoParaProposta);
+            
+            if(idx !== -1) {
+                bancoAgendamentos[idx].status = 'Contraproposta Enviada';
+                bancoAgendamentos[idx].sugestaoPaciente = `${dataFormatada} às ${horaInput}`;
+                
+                localStorage.setItem('sus_agendamentos', JSON.stringify(bancoAgendamentos));
+                alert("Sua sugestão de dia/horário foi enviada ao médico com sucesso!");
+                nextStep('panel');
+            }
+        }
+
+        // ================= MAPA LEAFLET =================
+        function inicializarMapa() {
+            const centroCidade = [-23.55052, -46.633308]; 
+            if (mapaLeaflet !== null) {
+                setTimeout(() => { mapaLeaflet.invalidateSize(); }, 100);
+                return;
+            }
+            mapaLeaflet = L.map('map').setView(centroCidade, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapaLeaflet);
+
+            const localizacoesUBS = [
+                { nome: "UBS Centro - Rua das Flores, 1123", coordenadas: [-23.5489, -46.6388] },
+                { nome: "UBS Vila Nova - Av. Principal, 450", coordenadas: [-23.5599, -46.6201] }
+            ];
+
+            localizacoesUBS.forEach(ubs => {
+                const marcador = L.marker(ubs.coordenadas).addTo(mapaLeaflet);
+                marcador.on('click', function() { selectUBS(ubs.nome); });
+            });
+        }
+    </script>
+</body>
+</html>
